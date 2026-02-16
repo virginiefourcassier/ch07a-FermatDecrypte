@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modélisation — nettoyage de l'argenterie (Ag2S / Al / H2O)</title>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --panel:#ffffff;
+      --ink:#111827;
+      --muted:#6b7280;
+      --accent:#6d10b1;
+      --ok:#98ca3e;
+      --shadow: 0 12px 30px rgba(0,0,0,.12);
+      --radius: 18px;
+    }
+    html,body{height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg);}
+    .wrap{max-width:1100px; margin:0 auto; padding:14px 14px 18px;}
+    .card{background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+    .top{display:flex; gap:12px; align-items:stretch; padding:12px;}
+    .titleBox{flex:1; display:flex; flex-direction:column; gap:6px;}
+    .title{font-weight:800; font-size:18px; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:13px; line-height:1.25}
+    .btnRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    button{
+      border:0; border-radius:14px; padding:10px 12px; cursor:pointer;
+      background:#111827; color:#fff; font-weight:700; font-size:13px;
+    }
+    button.secondary{background:#fff; color:#111827; border:1px solid #e5e7eb;}
+    button.tiny{padding:8px 10px; font-weight:700;}
+    .grid{display:grid; grid-template-columns: 340px 1fr; gap:12px; padding:12px;}
+    @media (max-width: 920px){ .grid{grid-template-columns:1fr;} }
+    .panel{background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:12px;}
+    .panel h3{margin:0 0 8px 0; font-size:14px;}
+    .slider{display:flex; align-items:center; gap:10px; margin:10px 0;}
+    .slider label{width:34px; font-weight:800; color:var(--accent);}
+    .slider .name{flex:1; font-size:13px;}
+    input[type="range"]{width:100%;}
+    .val{min-width:26px; text-align:right; font-variant-numeric: tabular-nums; font-weight:800; color:#111827;}
+    .hud{display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;}
+    .chip{border:1px solid #e5e7eb; border-radius:14px; padding:8px 10px;}
+    .chip .k{font-size:12px; color:var(--muted)}
+    .chip .v{font-size:18px; font-weight:900; font-variant-numeric: tabular-nums;}
+    .canvasWrap{position:relative; border-radius:18px; overflow:hidden; border:1px solid #e5e7eb; background:#e5e7eb;}
+    canvas{display:block; width:100%; height:560px; background:#d9dde3;}
+    .overlay{
+      position:absolute; inset:10px 10px auto auto;
+      background:rgba(255,255,255,.82); backdrop-filter: blur(6px);
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:14px; padding:8px 10px;
+      font-size:12px; color:#111827;
+      display:none;
+    }
+    .footer{
+      padding:10px 12px 12px;
+      color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      border-top:1px solid #e5e7eb;
+    }
+    .small{opacity:.9}
+    .badge{color:#111827; font-weight:800}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div class="titleBox">
+          <div class="title">Modélisation moléculaire (collision / transformation)</div>
+          <div class="sub">
+            Ajustez les quantités initiales et la température (agitation thermique). Observez l’évolution du système.
+          </div>
+          <div class="btnRow">
+            <button id="pauseBtn" class="tiny">⏸ Pause</button>
+            <button id="resetBtn" class="tiny secondary">↺ Reset</button>
+            <button id="labelsBtn" class="tiny secondary">🏷️ Symboles : OFF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h3>Réglages</h3>
+
+          <div class="slider" title="Quantité initiale">
+            <label>Ag₂S</label>
+            <div class="name">Sulfure d’argent</div>
+            <input id="ag2sRange" type="range" min="0" max="24" step="1" value="3" />
+            <span class="val" id="ag2sVal">3</span>
+          </div>
+
+          <div class="slider" title="Quantité initiale">
+            <label>Al</label>
+            <div class="name">Aluminium</div>
+            <input id="alRange" type="range" min="0" max="24" step="1" value="4" />
+            <span class="val" id="alVal">4</span>
+          </div>
+
+          <div class="slider" title="Quantité initiale">
+            <label>H₂O</label>
+            <div class="name">Eau</div>
+            <input id="h2oRange" type="range" min="0" max="60" step="1" value="18" />
+            <span class="val" id="h2oVal">18</span>
+          </div>
+
+          <div class="slider" title="Température (agitation thermique)">
+            <label>T</label>
+            <div class="name">Température</div>
+            <input id="tRange" type="range" min="1" max="5" step="1" value="1" />
+            <span class="val" id="tVal">1</span>
+          </div>
+
+          <div class="hud" aria-label="Comptage des espèces">
+            <div class="chip"><div class="k">Ag₂S</div><div class="v" id="c_ag2s">0</div></div>
+            <div class="chip"><div class="k">Al</div><div class="v" id="c_al">0</div></div>
+            <div class="chip"><div class="k">H₂O</div><div class="v" id="c_h2o">0</div></div>
+            <div class="chip"><div class="k">Ag</div><div class="v" id="c_ag">0</div></div>
+            <div class="chip"><div class="k">Al(OH)₃</div><div class="v" id="c_aloh3">0</div></div>
+            <div class="chip"><div class="k">H₂S</div><div class="v" id="c_h2s">0</div></div>
+          </div>
+
+          <div class="sub" style="margin-top:10px">
+            Astuce (prof, masquée) : touches <b>P</b> (diagnostic), <b>R</b> (vitesse réaction), <b>T</b> (mode piège).
+          </div>
+        </div>
+
+        <div class="canvasWrap">
+          <canvas id="sim" width="900" height="560" aria-label="Simulation"></canvas>
+          <div class="overlay" id="diag"></div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="small">But : visualiser « spectatrice », « limitant », « en excès ».</div>
+        <div class="small">HTML + JS autonomes (GitHub Pages / iframe ÉLÉA).</div>
+        <div class="small badge">Virginie Fourcassier. Lycée Pierre de Fermat. Toulouse</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
